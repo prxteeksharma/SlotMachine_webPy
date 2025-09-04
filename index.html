@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slot Machine</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .game-container {
+            background-color: #333;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+        }
+        h1 {
+            color: gold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+        }
+        .info-display {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #444;
+            border-radius: 8px;
+        }
+        .slot-display {
+            background-color: #000;
+            border: 3px solid #777;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            white-space: pre;
+            font-family: 'Courier New', monospace;
+            font-size: 2em;
+            color: #fff;
+        }
+        .controls-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        input[type="number"] {
+            width: 100%;
+            max-width: 150px;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+        }
+        button {
+            padding: 12px 25px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            background-color: gold;
+            color: #333;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #ffd700;
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Slot Machine</h1>
+        <div id="balance-display" class="info-display">Current Balance: $0</div>
+        <div id="slot-reels" class="slot-display">
+            A | B | C
+            <br>
+            A | B | C
+            <br>
+            A | B | C
+        </div>
+        <div id="message-area" class="info-display"></div>
+        <div class="controls-section">
+            <div class="input-group">
+                <input type="number" id="deposit-input" placeholder="Deposit Amount">
+                <button id="deposit-btn">Deposit</button>
+            </div>
+            <div class="input-group">
+                <input type="number" id="lines-input" placeholder="Lines (1-3)">
+                <input type="number" id="bet-input" placeholder="Bet Per Line">
+            </div>
+            <div class="action-buttons">
+                <button id="spin-btn">Spin</button>
+                <button id="quit-btn">Quit</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const MAX_LINES = 3;
+        const MAX_BET = 100;
+        const MIN_BET = 1;
+
+        const symbolCounts = { "A": 2, "B": 4, "C": 6, "D": 8 };
+        const symbolValues = { "A": 5, "B": 4, "C": 3, "D": 2 };
+        
+        const balanceDisplay = document.getElementById('balance-display');
+        const slotReels = document.getElementById('slot-reels');
+        const messageArea = document.getElementById('message-area');
+        const depositInput = document.getElementById('deposit-input');
+        const linesInput = document.getElementById('lines-input');
+        const betInput = document.getElementById('bet-input');
+        const depositBtn = document.getElementById('deposit-btn');
+        const spinBtn = document.getElementById('spin-btn');
+        const quitBtn = document.getElementById('quit-btn');
+
+        let balance = 0;
+        let isSpinning = false;
+
+        function updateBalance(newBalance) {
+            balance = newBalance;
+            balanceDisplay.textContent = `Current Balance: $${balance}`;
+        }
+
+        function checkWinnings(columns, lines, bet, values) {
+            let winnings = 0;
+            let winningLines = [];
+            for (let line = 0; line < lines; line++) {
+                const symbol = columns[0][line];
+                let isWinningLine = true;
+                for (let col = 1; col < columns.length; col++) {
+                    if (symbol !== columns[col][line]) {
+                        isWinningLine = false;
+                        break;
+                    }
+                }
+                if (isWinningLine) {
+                    winnings += values[symbol] * bet;
+                    winningLines.push(line + 1);
+                }
+            }
+            return { winnings, winningLines };
+        }
+
+        function getSlotMachineSpin() {
+            const allSymbols = [];
+            for (const symbol in symbolCounts) {
+                for (let i = 0; i < symbolCounts[symbol]; i++) {
+                    allSymbols.push(symbol);
+                }
+            }
+            
+            const columns = [];
+            for (let c = 0; c < 3; c++) {
+                const column = [];
+                const currentSymbols = [...allSymbols];
+                for (let r = 0; r < 3; r++) {
+                    const randomIndex = Math.floor(Math.random() * currentSymbols.length);
+                    const value = currentSymbols.splice(randomIndex, 1)[0];
+                    column.push(value);
+                }
+                columns.push(column);
+            }
+            return columns;
+        }
+
+        function printSlotMachine(columns) {
+            let result = "";
+            for (let r = 0; r < columns[0].length; r++) {
+                for (let c = 0; c < columns.length; c++) {
+                    result += columns[c][r] + (c === columns.length - 1 ? "" : " | ");
+                }
+                result += "\n";
+            }
+            return result.trim();
+        }
+
+        depositBtn.addEventListener('click', () => {
+            const amount = parseInt(depositInput.value);
+            if (!isNaN(amount) && amount > 0) {
+                updateBalance(balance + amount);
+                messageArea.textContent = `Successfully deposited $${amount}.`;
+                depositInput.value = "";
+            } else {
+                messageArea.textContent = "Please enter a valid amount.";
+            }
+        });
+
+        spinBtn.addEventListener('click', () => {
+            if (isSpinning) return;
+
+            const lines = parseInt(linesInput.value);
+            const bet = parseInt(betInput.value);
+
+            if (isNaN(lines) || isNaN(bet) || lines < 1 || lines > MAX_LINES || bet < MIN_BET || bet > MAX_BET) {
+                messageArea.textContent = `Please enter valid lines (1-${MAX_LINES}) and bet ($${MIN_BET}-$${MAX_BET}).`;
+                return;
+            }
+
+            const totalBet = lines * bet;
+            if (totalBet > balance) {
+                messageArea.textContent = "You don't have enough balance.";
+                return;
+            }
+            if (balance <= 0) {
+                messageArea.textContent = "You have run out of money!";
+                return;
+            }
+
+            isSpinning = true;
+            spinBtn.disabled = true;
+            depositBtn.disabled = true;
+            
+            updateBalance(balance - totalBet);
+            messageArea.textContent = `Spinning... Total bet: $${totalBet}`;
+
+            const allSymbols = Object.keys(symbolCounts);
+            let spinInterval = setInterval(() => {
+                let spinResult = "";
+                for (let r = 0; r < 3; r++) {
+                    spinResult += allSymbols[Math.floor(Math.random() * allSymbols.length)] + " | " +
+                                  allSymbols[Math.floor(Math.random() * allSymbols.length)] + " | " +
+                                  allSymbols[Math.floor(Math.random() * allSymbols.length)] + "\n";
+                }
+                slotReels.textContent = spinResult.trim();
+            }, 50);
+
+            setTimeout(() => {
+                clearInterval(spinInterval);
+                const finalSpin = getSlotMachineSpin();
+                const finalResultText = printSlotMachine(finalSpin);
+                slotReels.textContent = finalResultText;
+
+                const { winnings, winningLines } = checkWinnings(finalSpin, lines, bet, symbolValues);
+
+                if (winnings > 0) {
+                    updateBalance(balance + winnings);
+                    messageArea.textContent = `You won $${winnings}! You won on line(s): ${winningLines.join(', ')}`;
+                } else {
+                    messageArea.textContent = "You lost this round.";
+                }
+
+                isSpinning = false;
+                spinBtn.disabled = false;
+                depositBtn.disabled = false;
+            }, 2000);
+        });
+
+        quitBtn.addEventListener('click', () => {
+            messageArea.textContent = `Thanks for playing! Final balance: $${balance}`;
+            spinBtn.disabled = true;
+            depositBtn.disabled = true;
+        });
+
+    </script>
+</body>
+</html>
